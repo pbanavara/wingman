@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #101820; /* deep hospital blue */
+  --foreground: #e0f2f1; /* muted hospital white/green */
+  --accent: #1e3a5f; /* hospital navy */
+  --success: #4caf50; /* hospital green */
+  --warning: #ffb300; /* hospital yellow */
+  --error: #e53935; /* hospital red */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #101820;
+    --foreground: #e0f2f1;
+    --accent: #1e3a5f;
+    --success: #4caf50;
+    --warning: #ffb300;
+    --error: #e53935;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}

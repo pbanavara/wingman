@@ -1,4 +1,5 @@
 import React from "react";
+import { track } from "@vercel/analytics";
 import { SessionStatus } from "@/app/types";
 
 interface BottomToolbarProps {
@@ -73,7 +74,12 @@ function BottomToolbar({
           id="push-to-talk"
           type="checkbox"
           checked={isPTTActive}
-          onChange={(e) => setIsPTTActive(e.target.checked)}
+          onChange={(e) => {
+            setIsPTTActive(e.target.checked);
+            try {
+              track("ptt_toggle", { enabled: e.target.checked });
+            } catch {}
+          }}
           disabled={!isConnected}
           className="w-4 h-4"
         />
@@ -84,10 +90,22 @@ function BottomToolbar({
           Push to talk
         </label>
         <button
-          onMouseDown={handleTalkButtonDown}
-          onMouseUp={handleTalkButtonUp}
-          onTouchStart={handleTalkButtonDown}
-          onTouchEnd={handleTalkButtonUp}
+          onMouseDown={() => {
+            handleTalkButtonDown();
+            try { track("ptt_talk_down", { device: "mouse" }); } catch {}
+          }}
+          onMouseUp={() => {
+            handleTalkButtonUp();
+            try { track("ptt_talk_up", { device: "mouse" }); } catch {}
+          }}
+          onTouchStart={() => {
+            handleTalkButtonDown();
+            try { track("ptt_talk_down", { device: "touch" }); } catch {}
+          }}
+          onTouchEnd={() => {
+            handleTalkButtonUp();
+            try { track("ptt_talk_up", { device: "touch" }); } catch {}
+          }}
           disabled={!isPTTActive}
           className={
             (isPTTUserSpeaking ? "bg-gray-300" : "bg-gray-200") +

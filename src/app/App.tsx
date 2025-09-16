@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 
 // UI components
 import Transcript from "./components/Transcript";
-import Events from "./components/Events";
+// Removed right-side Events panel to simplify UI
 import BottomToolbar from "./components/BottomToolbar";
 
 // Types
@@ -105,10 +105,9 @@ function App() {
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
 
-  const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
-    useState<boolean>(true);
+  // Removed Events pane state as the panel is no longer shown
   const [userText, setUserText] = useState<string>("");
-  const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
+  const [isPTTActive, setIsPTTActive] = useState<boolean>(true);
   const [isPTTUserSpeaking, setIsPTTUserSpeaking] = useState<boolean>(false);
   const [isAudioPlaybackEnabled, setIsAudioPlaybackEnabled] = useState<boolean>(
     () => {
@@ -325,23 +324,7 @@ function App() {
     }
   };
 
-  const handleAgentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newAgentConfig = e.target.value;
-    const url = new URL(window.location.toString());
-    url.searchParams.set("agentConfig", newAgentConfig);
-    window.location.replace(url.toString());
-  };
-
-  const handleSelectedAgentChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const newAgentName = e.target.value;
-    // Reconnect session with the newly selected agent as root so that tool
-    // execution works correctly.
-    disconnectFromRealtime();
-    setSelectedAgentName(newAgentName);
-    // connectToRealtime will be triggered by effect watching selectedAgentName
-  };
+  // Scenario/Agent selection handlers removed as the selector is hidden
 
   // Because we need a new connection, refresh the page when codec changes
   const handleCodecChange = (newCodec: string) => {
@@ -355,10 +338,6 @@ function App() {
     if (storedPushToTalkUI) {
       setIsPTTActive(storedPushToTalkUI === "true");
     }
-    const storedLogsExpanded = localStorage.getItem("logsExpanded");
-    if (storedLogsExpanded) {
-      setIsEventsPaneExpanded(storedLogsExpanded === "true");
-    }
     const storedAudioPlaybackEnabled = localStorage.getItem(
       "audioPlaybackEnabled"
     );
@@ -371,9 +350,7 @@ function App() {
     localStorage.setItem("pushToTalkUI", isPTTActive.toString());
   }, [isPTTActive]);
 
-  useEffect(() => {
-    localStorage.setItem("logsExpanded", isEventsPaneExpanded.toString());
-  }, [isEventsPaneExpanded]);
+  // Logs panel removed; no longer persisting logsExpanded
 
   useEffect(() => {
     localStorage.setItem(
@@ -430,7 +407,7 @@ function App() {
     };
   }, [sessionStatus]);
 
-  const agentSetKey = searchParams.get("agentConfig") || "default";
+  // const agentSetKey = searchParams.get("agentConfig") || "default";
 
   return (
     <div className="text-base flex flex-col h-screen bg-background text-foreground relative">
@@ -458,7 +435,7 @@ function App() {
         </div>
       </nav>
 
-      {/* Scenario/Agent Select Bar */}
+      {/* Scenario/Agent Select Bar (commented out per request)
       <div className="p-5 text-lg font-semibold flex justify-between items-center bg-accent/80 border-b border-accent">
         <div className="flex items-center">
           <label className="flex items-center text-base gap-1 mr-2 font-medium text-foreground">
@@ -522,19 +499,19 @@ function App() {
           )}
         </div>
       </div>
+      */}
+      
 
-      <div className="flex flex-1 gap-2 px-2 overflow-hidden relative bg-background">
-        <Transcript
-          userText={userText}
-          setUserText={setUserText}
-          onSendMessage={handleSendTextMessage}
-          downloadRecording={downloadRecording}
-          canSend={
-            sessionStatus === "CONNECTED"
-          }
-        />
-
-        <Events isExpanded={isEventsPaneExpanded} />
+      <div className="flex flex-1 items-center justify-center px-4 py-6 bg-background">
+        <div className="w-full max-w-3xl">
+          <Transcript
+            userText={userText}
+            setUserText={setUserText}
+            onSendMessage={handleSendTextMessage}
+            downloadRecording={downloadRecording}
+            canSend={sessionStatus === "CONNECTED"}
+          />
+        </div>
       </div>
 
       <BottomToolbar
@@ -545,8 +522,6 @@ function App() {
         isPTTUserSpeaking={isPTTUserSpeaking}
         handleTalkButtonDown={handleTalkButtonDown}
         handleTalkButtonUp={handleTalkButtonUp}
-        isEventsPaneExpanded={isEventsPaneExpanded}
-        setIsEventsPaneExpanded={setIsEventsPaneExpanded}
         isAudioPlaybackEnabled={isAudioPlaybackEnabled}
         setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
         codec={urlCodec}

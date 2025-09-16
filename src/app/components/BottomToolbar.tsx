@@ -10,8 +10,6 @@ interface BottomToolbarProps {
   isPTTUserSpeaking: boolean;
   handleTalkButtonDown: () => void;
   handleTalkButtonUp: () => void;
-  isEventsPaneExpanded: boolean;
-  setIsEventsPaneExpanded: (val: boolean) => void;
   isAudioPlaybackEnabled: boolean;
   setIsAudioPlaybackEnabled: (val: boolean) => void;
   codec: string;
@@ -26,8 +24,6 @@ function BottomToolbar({
   isPTTUserSpeaking,
   handleTalkButtonDown,
   handleTalkButtonUp,
-  isEventsPaneExpanded,
-  setIsEventsPaneExpanded,
   isAudioPlaybackEnabled,
   setIsAudioPlaybackEnabled,
   codec,
@@ -48,19 +44,19 @@ function BottomToolbar({
   }
 
   function getConnectionButtonClasses() {
-    const baseClasses = "text-white text-base p-2 w-36 rounded-md h-full";
+    const baseClasses = "text-background text-base p-2 w-36 rounded-md h-full";
     const cursorClass = isConnecting ? "cursor-not-allowed" : "cursor-pointer";
 
     if (isConnected) {
       // Connected -> label "Disconnect" -> red
       return `bg-red-600 hover:bg-red-700 ${cursorClass} ${baseClasses}`;
     }
-    // Disconnected or connecting -> label is either "Connect" or "Connecting" -> black
-    return `bg-black hover:bg-gray-900 ${cursorClass} ${baseClasses}`;
+    // Disconnected or connecting -> label is either "Connect" or "Connecting" -> success green to match home
+    return `bg-success hover:bg-green-700 ${cursorClass} ${baseClasses}`;
   }
 
   return (
-    <div className="p-4 flex flex-row items-center justify-center gap-x-8">
+    <div className="p-4 flex flex-row items-center justify-center gap-x-8 bg-accent border-t border-accent">
       <button
         onClick={onToggleConnection}
         className={getConnectionButtonClasses()}
@@ -131,19 +127,6 @@ function BottomToolbar({
           className="flex items-center cursor-pointer"
         >
           Audio playback
-        </label>
-      </div>
-
-      <div className="flex flex-row items-center gap-2">
-        <input
-          id="logs"
-          type="checkbox"
-          checked={isEventsPaneExpanded}
-          onChange={(e) => setIsEventsPaneExpanded(e.target.checked)}
-          className="w-4 h-4"
-        />
-        <label htmlFor="logs" className="flex items-center cursor-pointer">
-          Logs
         </label>
       </div>
 

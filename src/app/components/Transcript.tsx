@@ -123,7 +123,7 @@ function Transcript({
                 isUser ? "items-end" : "items-start"
               }`;
               const bubbleBase = `max-w-lg p-3 ${
-                isUser ? "bg-success text-background" : "bg-background text-foreground border border-accent"
+                isUser ? "bg-success text-foreground" : "bg-background text-foreground border border-accent"
               }`;
               const isBracketedMessage =
                 title.startsWith("[") && title.endsWith("]");
@@ -225,7 +225,7 @@ function Transcript({
         <button
           onClick={onSendMessage}
           disabled={!canSend || !userText.trim()}
-          className="bg-success text-background rounded-full px-2 py-2 disabled:opacity-50"
+          className="bg-success text-foreground rounded-full px-2 py-2 disabled:opacity-50"
         >
           <Image src="arrow.svg" alt="Send" width={24} height={24} />
         </button>

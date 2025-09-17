@@ -44,7 +44,7 @@ function BottomToolbar({
   }
 
   function getConnectionButtonClasses() {
-    const baseClasses = "text-background text-base p-2 w-36 rounded-md h-full";
+    const baseClasses = "text-foreground text-base p-2 w-36 rounded-md h-full";
     const cursorClass = isConnecting ? "cursor-not-allowed" : "cursor-pointer";
 
     if (isConnected) {
@@ -52,7 +52,7 @@ function BottomToolbar({
       return `bg-red-600 hover:bg-red-700 ${cursorClass} ${baseClasses}`;
     }
     // Disconnected or connecting -> label is either "Connect" or "Connecting" -> success green to match home
-    return `bg-success hover:bg-green-700 ${cursorClass} ${baseClasses}`;
+    return `bg-success hover:opacity-90 ${cursorClass} ${baseClasses}`;
   }
 
   return (

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 160" role="img" aria-labelledby="title">
+  <title>Post‑Meeting Capture Illustration</title>
+  <defs>
+    <style>
+      .line { stroke: #2e4457; stroke-width: 6; stroke-linecap: round; }
+      .fill { fill: #2e4457; }
+    </style>
+  </defs>
+  <!-- Clipboard -->
+  <rect x="28" y="28" width="120" height="104" rx="10" fill="none" class="line"/>
+  <rect x="72" y="16" width="32" height="16" rx="6" class="fill"/>
+  <!-- Checklist lines -->
+  <line x1="48" y1="64" x2="132" y2="64" class="line"/>
+  <line x1="48" y1="88" x2="120" y2="88" class="line"/>
+  <line x1="48" y1="112" x2="136" y2="112" class="line"/>
+  <!-- Voice bubble -->
+  <path d="M228 56c0 22-22 40-48 40-6 0-12-1-18-3l-26 17 8-24c-7-7-12-17-12-30 0-22 22-40 48-40s48 18 48 40z" class="fill"/>
+</svg>

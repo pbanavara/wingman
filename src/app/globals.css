@@ -3,20 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --background: #101820; /* deep hospital blue */
-  --foreground: #e0f2f1; /* muted hospital white/green */
-  --accent: #1e3a5f; /* hospital navy */
-  --success: #4caf50; /* hospital green */
-  --warning: #ffb300; /* hospital yellow */
-  --error: #e53935; /* hospital red */
+  /* Dark theme tuned to Wingman logo (deep slate navy) */
+  --background: #0b1218; /* page background: near-black navy */
+  --foreground: #e6edf3; /* primary text: soft off-white */
+  --accent: #101c2a;     /* panels/toolbars: dark navy */
+  --success: #2e4457;    /* primary actions: slate blue (brand) */
+  --warning: #ffb300;
+  --error: #e53935;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #101820;
-    --foreground: #e0f2f1;
-    --accent: #1e3a5f;
-    --success: #4caf50;
+    --background: #0b1218;
+    --foreground: #e6edf3;
+    --accent: #101c2a;
+    --success: #2e4457;
     --warning: #ffb300;
     --error: #e53935;
   }

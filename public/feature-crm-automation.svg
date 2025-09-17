@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 160" role="img" aria-labelledby="title">
+  <title>CRM Automation Illustration</title>
+  <defs>
+    <style>
+      .line { stroke: #2e4457; stroke-width: 6; stroke-linecap: round; fill: none; }
+      .fill { fill: #2e4457; }
+    </style>
+  </defs>
+  <!-- Database -->
+  <ellipse cx="60" cy="44" rx="44" ry="14" class="line"/>
+  <path d="M16 44v52c0 8 20 14 44 14s44-6 44-14V44" class="line"/>
+  <!-- Nodes -->
+  <rect x="160" y="24" width="64" height="36" rx="6" class="line"/>
+  <rect x="160" y="72" width="64" height="36" rx="6" class="line"/>
+  <rect x="160" y="120" width="64" height="24" rx="6" class="line"/>
+  <!-- Lines -->
+  <line x1="104" y1="58" x2="160" y2="42" class="line"/>
+  <line x1="104" y1="80" x2="160" y2="90" class="line"/>
+  <line x1="104" y1="106" x2="160" y2="132" class="line"/>
+</svg>

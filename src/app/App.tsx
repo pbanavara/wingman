@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 
-//import Image from "next/image";
+import Image from "next/image";
 
 // UI components
 import Transcript from "./components/Transcript";
@@ -414,24 +414,29 @@ function App() {
       {/* Navigation Bar */}
       <nav className="flex items-center justify-between px-6 py-4 bg-accent border-b border-accent shadow-md">
         <div className="flex items-center gap-2">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="mr-2" xmlns="http://www.w3.org/2000/svg">
-            <rect x="3" y="3" width="18" height="18" rx="4" fill="#4caf50" />
-            <rect x="7" y="11" width="10" height="2" rx="1" fill="#e0f2f1" />
-            <rect x="11" y="7" width="2" height="10" rx="1" fill="#e0f2f1" />
-          </svg>
+          <Image src="/wingman-logo.svg" alt="Wingman" width={28} height={28} className="mr-2" />
           <span className="font-bold text-lg tracking-wide">Wingman AI Co-pilot</span>
         </div>
         <div className="flex gap-4 items-center">
-          <span className="text-success font-semibold">Recovery</span>
           {/* Start Chat Button */}
           {sessionStatus === "DISCONNECTED" && (
             <button
-              className="bg-success text-background px-4 py-2 rounded-lg font-semibold shadow hover:bg-green-700 transition"
+              className="bg-success text-foreground px-4 py-2 rounded-lg font-semibold shadow hover:opacity-90 transition"
               onClick={connectToRealtime}
             >
               Start Chat
             </button>
           )}
+          {/* Early Access CTA (Calendly/Cal.com link) */}
+          <a
+            href="https://cal.com/pradeep-banavara-nt7ljs/30min"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-accent/60 hover:bg-accent text-foreground px-3 py-2 rounded-lg border border-accent/70 transition"
+            aria-label="Sign up for early access"
+          >
+            Sign up for early access
+          </a>
         </div>
       </nav>
 

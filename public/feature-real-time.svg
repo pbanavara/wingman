@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 160" role="img" aria-labelledby="title">
+  <title>Real‑Time Intel Illustration</title>
+  <defs>
+    <style>
+      .line { stroke: #2e4457; stroke-width: 6; stroke-linecap: round; fill: none; }
+      .fill { fill: #2e4457; }
+    </style>
+  </defs>
+  <!-- Radar -->
+  <circle cx="84" cy="80" r="56" class="line"/>
+  <circle cx="84" cy="80" r="36" class="line"/>
+  <line x1="84" y1="80" x2="136" y2="52" class="line"/>
+  <circle cx="136" cy="52" r="6" class="fill"/>
+  <!-- Clock -->
+  <circle cx="196" cy="64" r="32" class="line"/>
+  <line x1="196" y1="64" x2="196" y2="48" class="line"/>
+  <line x1="196" y1="64" x2="214" y2="64" class="line"/>
+</svg>

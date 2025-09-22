@@ -2,8 +2,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
+import { useSession } from "next-auth/react";
 
-import Image from "next/image";
+import NavBar from "./components/NavBar";
 
 // UI components
 import Transcript from "./components/Transcript";
@@ -11,7 +12,7 @@ import Transcript from "./components/Transcript";
 import BottomToolbar from "./components/BottomToolbar";
 
 // Types
-import { SessionStatus } from "@/app/types";
+import { SessionStatus, TranscriptItem } from "@/app/types";
 import type { RealtimeAgent } from '@openai/agents/realtime';
 
 // Context providers & hooks
@@ -38,8 +39,61 @@ const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
 import useAudioDownload from "./hooks/useAudioDownload";
 import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 
+type ChatSession = {
+  id: string;
+  title: string;
+  createdAt: number;
+  transcriptItems: TranscriptItem[];
+};
+
+const SESSIONS_STORAGE_PREFIX = "wingman.chat.sessions";
+const FALLBACK_SESSION_TITLE = "New Session";
+const MAX_SESSION_TITLE_LENGTH = 32;
+
+const cloneTranscriptItems = (items: TranscriptItem[]): TranscriptItem[] => {
+  try {
+    return structuredClone(items);
+  } catch {
+    return JSON.parse(JSON.stringify(items));
+  }
+};
+
+const deriveSessionTitle = (items: TranscriptItem[]): string => {
+  const firstUserMessage = items.find(
+    (item) =>
+      item.type === "MESSAGE" &&
+      item.role === "user" &&
+      !item.isHidden &&
+      typeof item.title === "string" &&
+      item.title.trim().length > 0,
+  );
+
+  if (!firstUserMessage || !firstUserMessage.title) {
+    return FALLBACK_SESSION_TITLE;
+  }
+
+  const normalized = firstUserMessage.title.replace(/\s+/g, " ").trim();
+
+  if (!normalized) {
+    return FALLBACK_SESSION_TITLE;
+  }
+
+  if (normalized.length <= MAX_SESSION_TITLE_LENGTH) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, MAX_SESSION_TITLE_LENGTH).trimEnd()}...`;
+};
+
 function App() {
   const searchParams = useSearchParams()!;
+  const { data: authSession } = useSession();
+
+  const sessionOwnerId = authSession?.user?.id ?? "default";
+  const storageKey = React.useMemo(
+    () => `${SESSIONS_STORAGE_PREFIX}.${sessionOwnerId}`,
+    [sessionOwnerId],
+  );
 
   // ---------------------------------------------------------------------
   // Codec selector – lets you toggle between wide-band Opus (48 kHz)
@@ -57,10 +111,24 @@ function App() {
   // via global codecPatch at module load 
 
   const {
+    transcriptItems,
     addTranscriptMessage,
     addTranscriptBreadcrumb,
+    replaceTranscriptItems,
+    clearTranscript,
   } = useTranscript();
   const { logClientEvent, logServerEvent } = useEvent();
+
+  const replaceTranscriptItemsRef = useRef(replaceTranscriptItems);
+  const clearTranscriptRef = useRef(clearTranscript);
+
+  useEffect(() => {
+    replaceTranscriptItemsRef.current = replaceTranscriptItems;
+  }, [replaceTranscriptItems]);
+
+  useEffect(() => {
+    clearTranscriptRef.current = clearTranscript;
+  }, [clearTranscript]);
 
   const [selectedAgentName, setSelectedAgentName] = useState<string>("");
   const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<
@@ -105,6 +173,17 @@ function App() {
   const [sessionStatus, setSessionStatus] =
     useState<SessionStatus>("DISCONNECTED");
 
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionsHydrated, setSessionsHydrated] = useState(false);
+
+  const createEmptySession = React.useCallback((): ChatSession => ({
+    id: uuidv4(),
+    title: FALLBACK_SESSION_TITLE,
+    createdAt: Date.now(),
+    transcriptItems: [],
+  }), []);
+
   // Removed Events pane state as the panel is no longer shown
   const [userText, setUserText] = useState<string>("");
   const [isPTTActive, setIsPTTActive] = useState<boolean>(true);
@@ -129,6 +208,94 @@ function App() {
       console.error('Failed to send via SDK', err);
     }
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    setSessionsHydrated(false);
+
+    try {
+      const storedValue = localStorage.getItem(storageKey);
+      let parsedSessions: ChatSession[] = [];
+
+      if (storedValue) {
+        try {
+          const parsed = JSON.parse(storedValue) as ChatSession[];
+          if (Array.isArray(parsed)) {
+            parsedSessions = parsed.map((session) => ({
+              id: session.id,
+              title: session.title ?? FALLBACK_SESSION_TITLE,
+              createdAt: session.createdAt ?? Date.now(),
+              transcriptItems: Array.isArray(session.transcriptItems)
+                ? session.transcriptItems
+                : [],
+            }));
+          }
+        } catch (error) {
+          console.warn('[wingman] Failed to parse stored sessions', error);
+        }
+      }
+
+      if (parsedSessions.length === 0) {
+        const freshSession = createEmptySession();
+        parsedSessions = [freshSession];
+        clearTranscriptRef.current();
+      } else {
+        replaceTranscriptItemsRef.current(
+          cloneTranscriptItems(parsedSessions[0].transcriptItems ?? []),
+        );
+      }
+
+      setSessions(parsedSessions);
+      setActiveSessionId(parsedSessions[0]?.id ?? null);
+      setUserText("");
+    } catch (error) {
+      console.warn('[wingman] Unable to restore sessions', error);
+      const fallbackSession = createEmptySession();
+      setSessions([fallbackSession]);
+      setActiveSessionId(fallbackSession.id);
+      clearTranscriptRef.current();
+      setUserText("");
+    } finally {
+      setSessionsHydrated(true);
+    }
+  }, [storageKey, createEmptySession]);
+
+  useEffect(() => {
+    if (!sessionsHydrated) return;
+    if (!activeSessionId) return;
+
+    setSessions((prev) => {
+      const index = prev.findIndex((session) => session.id === activeSessionId);
+      if (index === -1) return prev;
+
+      const updatedSessions = [...prev];
+      const currentSession = updatedSessions[index];
+      const derivedTitle = deriveSessionTitle(transcriptItems);
+      const shouldUpdateTitle =
+        derivedTitle !== FALLBACK_SESSION_TITLE ||
+        currentSession.title === FALLBACK_SESSION_TITLE;
+
+      updatedSessions[index] = {
+        ...currentSession,
+        transcriptItems: cloneTranscriptItems(transcriptItems),
+        title: shouldUpdateTitle ? derivedTitle : currentSession.title,
+      };
+
+      return updatedSessions;
+    });
+  }, [activeSessionId, transcriptItems, sessionsHydrated]);
+
+  useEffect(() => {
+    if (!sessionsHydrated) return;
+    if (typeof window === 'undefined') return;
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(sessions));
+    } catch (error) {
+      console.warn('[wingman] Failed to persist sessions', error);
+    }
+  }, [sessions, sessionsHydrated, storageKey]);
 
   useHandleSessionHistory();
 
@@ -237,6 +404,30 @@ function App() {
     disconnect();
     setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);
+  };
+
+  const handleSelectSession = (sessionId: string) => {
+    if (sessionId === activeSessionId) return;
+
+    const targetSession = sessions.find((session) => session.id === sessionId);
+    if (!targetSession) return;
+
+    disconnectFromRealtime();
+    setActiveSessionId(sessionId);
+    replaceTranscriptItemsRef.current(
+      cloneTranscriptItems(targetSession.transcriptItems),
+    );
+    setUserText("");
+  };
+
+  const handleCreateSession = () => {
+    disconnectFromRealtime();
+
+    const newSession = createEmptySession();
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveSessionId(newSession.id);
+    clearTranscriptRef.current();
+    setUserText("");
   };
 
   const sendSimulatedUserMessage = (text: string) => {
@@ -411,127 +602,94 @@ function App() {
 
   return (
     <div className="text-base flex flex-col h-screen bg-background text-foreground relative">
-      {/* Navigation Bar */}
-      <nav className="flex items-center justify-between px-6 py-4 bg-accent border-b border-accent shadow-md">
-        <div className="flex items-center gap-2">
-          <Image src="/wingman-logo.svg" alt="Wingman" width={28} height={28} className="mr-2" />
-          <span className="font-bold text-lg tracking-wide">Wingman AI Co-pilot</span>
-        </div>
-        <div className="flex gap-4 items-center">
-          {/* Start Chat Button */}
-          {sessionStatus === "DISCONNECTED" && (
-            <button
-              className="bg-success text-foreground px-4 py-2 rounded-lg font-semibold shadow hover:opacity-90 transition"
-              onClick={connectToRealtime}
-            >
-              Start Chat
-            </button>
-          )}
-          {/* Early Access CTA (Calendly/Cal.com link) */}
-          <a
-            href="https://cal.com/pradeep-banavara-nt7ljs/30min"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-accent/60 hover:bg-accent text-foreground px-3 py-2 rounded-lg border border-accent/70 transition"
-            aria-label="Sign up for early access"
-          >
-            Sign up for early access
-          </a>
-        </div>
-      </nav>
+      <NavBar
+        onStartChat={connectToRealtime}
+        showStartChat={sessionStatus === "DISCONNECTED"}
+      />
 
-      {/* Scenario/Agent Select Bar (commented out per request)
-      <div className="p-5 text-lg font-semibold flex justify-between items-center bg-accent/80 border-b border-accent">
-        <div className="flex items-center">
-          <label className="flex items-center text-base gap-1 mr-2 font-medium text-foreground">
-            Scenario
-          </label>
-          <div className="relative inline-block">
-            <select
-              value={agentSetKey}
-              onChange={handleAgentChange}
-              className="appearance-none border border-accent bg-background text-foreground rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
+      <div className="flex flex-1 overflow-hidden bg-background">
+        <aside className="w-72 max-w-xs bg-accent border-r border-accent flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-accent/60">
+            <span className="font-semibold text-base">Sessions</span>
+            <button
+              type="button"
+              onClick={handleCreateSession}
+              disabled={!sessionsHydrated}
+              className={`text-sm font-semibold px-3 py-1 rounded-md bg-background text-foreground border border-accent transition ${
+                sessionsHydrated ? 'hover:bg-background/80' : 'opacity-50 cursor-not-allowed'
+              }`}
             >
-              {Object.keys(allAgentSets).map((agentKey) => (
-                <option key={agentKey} value={agentKey}>
-                  {agentKey}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-foreground">
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M5.23 7.21a.75.75 0 011.06.02L10 10.44l3.71-3.21a.75.75 0 111.04 1.08l-4.25 3.65a.75.75 0 01-1.04 0L5.21 8.27a.75.75 0 01.02-1.06z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              New
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto divide-y divide-accent/60">
+            {sessions.length === 0 ? (
+              <div className="px-4 py-6 text-sm text-foreground/70">
+                No sessions yet.
+              </div>
+            ) : (
+              sessions.map((session) => {
+                const isActive = session.id === activeSessionId;
+                const preview = session.title || FALLBACK_SESSION_TITLE;
+                const createdLabel = new Date(session.createdAt).toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                });
+                const messageCount = session.transcriptItems.filter(
+                  (item) => item.type === 'MESSAGE' && !item.isHidden,
+                ).length;
+
+                return (
+                  <button
+                    key={session.id}
+                    type="button"
+                    onClick={() => handleSelectSession(session.id)}
+                    className={`w-full text-left px-4 py-3 transition-colors ${
+                      isActive
+                        ? 'bg-background text-foreground shadow-inner'
+                        : 'hover:bg-background/50 text-foreground/80'
+                    }`}
+                  >
+                    <div className="text-sm font-semibold truncate">{preview}</div>
+                    <div className="flex justify-between text-xs text-foreground/60 mt-1">
+                      <span>{createdLabel}</span>
+                      <span>{messageCount} msgs</span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </aside>
+
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-4 py-6 flex justify-center">
+            <div className="w-full max-w-3xl">
+              <Transcript
+                userText={userText}
+                setUserText={setUserText}
+                onSendMessage={handleSendTextMessage}
+                downloadRecording={downloadRecording}
+                canSend={sessionStatus === "CONNECTED"}
+              />
             </div>
           </div>
 
-          {agentSetKey && (
-            <div className="flex items-center ml-6">
-              <label className="flex items-center text-base gap-1 mr-2 font-medium text-foreground">
-                Agent
-              </label>
-              <div className="relative inline-block">
-                <select
-                  value={selectedAgentName}
-                  onChange={handleSelectedAgentChange}
-                  className="appearance-none border border-accent bg-background text-foreground rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
-                >
-                  {selectedAgentConfigSet?.map((agent) => (
-                    <option key={agent.name} value={agent.name}>
-                      {agent.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-foreground">
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.23 7.21a.75.75 0 011.06.02L10 10.44l3.71-3.21a.75.75 0 111.04 1.08l-4.25 3.65a.75.75 0 01-1.04 0L5.21 8.27a.75.75 0 01.02-1.06z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      */}
-      
-
-      <div className="flex flex-1 items-center justify-center px-4 py-6 bg-background">
-        <div className="w-full max-w-3xl">
-          <Transcript
-            userText={userText}
-            setUserText={setUserText}
-            onSendMessage={handleSendTextMessage}
-            downloadRecording={downloadRecording}
-            canSend={sessionStatus === "CONNECTED"}
+          <BottomToolbar
+            sessionStatus={sessionStatus}
+            onToggleConnection={onToggleConnection}
+            isPTTActive={isPTTActive}
+            setIsPTTActive={setIsPTTActive}
+            isPTTUserSpeaking={isPTTUserSpeaking}
+            handleTalkButtonDown={handleTalkButtonDown}
+            handleTalkButtonUp={handleTalkButtonUp}
+            isAudioPlaybackEnabled={isAudioPlaybackEnabled}
+            setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
+            codec={urlCodec}
+            onCodecChange={handleCodecChange}
           />
         </div>
       </div>
-
-      <BottomToolbar
-        sessionStatus={sessionStatus}
-        onToggleConnection={onToggleConnection}
-        isPTTActive={isPTTActive}
-        setIsPTTActive={setIsPTTActive}
-        isPTTUserSpeaking={isPTTUserSpeaking}
-        handleTalkButtonDown={handleTalkButtonDown}
-        handleTalkButtonUp={handleTalkButtonUp}
-        isAudioPlaybackEnabled={isAudioPlaybackEnabled}
-        setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
-        codec={urlCodec}
-        onCodecChange={handleCodecChange}
-      />
     </div>
   );
 }

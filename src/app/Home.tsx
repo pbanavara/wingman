@@ -3,9 +3,13 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { track } from "@vercel/analytics";
 import Image from "next/image";
+import NavBar from "./components/NavBar";
+import { signIn, useSession } from "next-auth/react";
 
 export default function Home() {
   const router = useRouter();
+  const { status } = useSession();
+  const isAuthenticated = status === "authenticated";
   const handleStartChat = () => {
     try {
       track("start_chat_click", { source: "home" });
@@ -13,8 +17,22 @@ export default function Home() {
     router.push("/chat");
   };
 
+  const handlePrimaryAction = () => {
+    if (isAuthenticated) {
+      handleStartChat();
+      return;
+    }
+    void signIn("google");
+  };
+
+  const primaryLabel = isAuthenticated ? "Start Chat" : "Sign in with Google";
+  const primaryAriaLabel = isAuthenticated
+    ? "Start Chat with Wingman"
+    : "Sign in with Google to start chatting";
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <NavBar />
       {/* Hero */}
       <header className="flex-0 px-6 py-16 md:py-20 bg-accent border-b border-accent">
         <div className="max-w-4xl mx-auto text-center">
@@ -35,8 +53,8 @@ export default function Home() {
           <div className="mt-8">
             <button
               className="inline-flex items-center gap-2 bg-success text-foreground px-6 py-3 rounded-lg font-semibold shadow hover:opacity-90 transition"
-              onClick={handleStartChat}
-              aria-label="Start Chat with Wingman"
+              onClick={handlePrimaryAction}
+              aria-label={primaryAriaLabel}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -48,7 +66,7 @@ export default function Home() {
               >
                 <path d="M12 14a4 4 0 0 0 4-4V6a4 4 0 0 0-8 0v4a4 4 0 0 0 4 4zm-1 2.93V20H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-3.07A7.002 7.002 0 0 0 19 10a1 1 0 1 0-2 0 5 5 0 1 1-10 0 1 1 0 1 0-2 0 7.002 7.002 0 0 0 8 6.93z" />
               </svg>
-              <span>Start Chat</span>
+              <span>{primaryLabel}</span>
             </button>
           </div>
         </div>
@@ -117,26 +135,40 @@ export default function Home() {
             </div>
           </section>
 
-          {/* CRM Note + Bottom CTA */}
+          {/* CRM Note + Bottom CTAs */}
           <div className="text-center space-y-6">
             <h3 className="text-2xl md:text-3xl font-bold">Ready to supercharge your field sales ?</h3>
-            <button
-              className="inline-flex items-center gap-2 bg-success text-foreground px-6 py-3 rounded-lg font-semibold shadow hover:opacity-90 transition"
-              onClick={handleStartChat}
-              aria-label="Start Chat with Wingman"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                width="20"
-                height="20"
-                aria-hidden="true"
-                fill="currentColor"
+            <div className="flex justify-center gap-3">
+              <button
+                className="inline-flex items-center gap-2 bg-success text-foreground px-6 py-3 rounded-lg font-semibold shadow hover:opacity-90 transition"
+                onClick={handlePrimaryAction}
+                aria-label={primaryAriaLabel}
               >
-                <path d="M4 12.75a.75.75 0 0 1 1.5 0 6.5 6.5 0 0 0 13 0 .75.75 0 0 1 1.5 0 8 8 0 0 1-16 0zM8 11a.75.75 0 0 1-1.5 0V7a5.5 5.5 0 1 1 11 0v4a.75.75 0 0 1-1.5 0V7a4 4 0 1 0-8 0v4z" />
-              </svg>
-              <span>Get started</span>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  aria-hidden="true"
+                  fill="currentColor"
+                >
+                  <path d="M4 12.75a.75.75 0 0 1 1.5 0 6.5 6.5 0 0 0 13 0 .75.75 0 0 1 1.5 0 8 8 0 0 1-16 0zM8 11a.75.75 0 0 1-1.5 0V7a5.5 5.5 0 1 1 11 0v4a.75.75 0 0 1-1.5 0V7a4 4 0 1 0-8 0v4z" />
+                </svg>
+                <span>{primaryLabel}</span>
+              </button>
+              <a
+                href="https://cal.com/pradeep-banavara-nt7ljs/30min"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-accent/60 hover:bg-accent text-foreground px-6 py-3 rounded-lg font-semibold border border-accent/70 transition"
+                aria-label="Book a meeting with Upsellpilot"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                  <path d="M6 2a2 2 0 0 0-2 2v16l8-4 8 4V4a2 2 0 0 0-2-2H6z" />
+                </svg>
+                <span>Book a meeting with UpsellPilot</span>
+              </a>
+            </div>
           </div>
         </div>
       </main>

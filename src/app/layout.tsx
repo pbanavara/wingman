@@ -3,6 +3,8 @@ import "./globals.css";
 import "./lib/envSetup";
 import { Analytics } from "@vercel/analytics/react";
 
+import { AuthProvider } from "@/app/providers/AuthProvider";
+
 export const metadata: Metadata = {
   title: "Wingman – AI Copilot for Account Executives",
   description:
@@ -17,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`antialiased`}>
-        {children}
+        <AuthProvider>{children}</AuthProvider>
         <Analytics />
       </body>
     </html>
